@@ -11,20 +11,19 @@ const authenticate = async (req, res, next) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ success: false, message: 'Access token required' });
     }
-
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Confirm user still exists & is active
     const [rows] = await pool.query(
       'SELECT u.user_id, u.role_id, u.full_name, u.email, u.status, r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = ?',
       [decoded.user_id]
     );
 
+    console.log('USER FROM DB:', rows[0]); 
+
     if (!rows.length || rows[0].status !== 'Active') {
       return res.status(401).json({ success: false, message: 'User not found or inactive' });
     }
-
     req.user = rows[0];
     next();
   } catch (err) {
@@ -41,6 +40,9 @@ const authenticate = async (req, res, next) => {
  */
 const authorize = (...roles) => {
   return (req, res, next) => {
+
+     console.log('USER ROLE:', req.user.role_name);  // ← add this
+    console.log('REQUIRED ROLES:', roles);           // ← add this
     if (!roles.includes(req.user.role_name)) {
       return res.status(403).json({
         success: false,
@@ -50,5 +52,7 @@ const authorize = (...roles) => {
     next();
   };
 };
+
+
 
 module.exports = { authenticate, authorize };

@@ -9,4 +9,9 @@ router.post('/',    authorize('Admin'),            createUser);
 router.put('/:id',  authorize('Admin'),            updateUser);
 router.delete('/:id', authorize('Admin'),          deleteUser);
 
+router.use((req, res, next) => {
+  console.log('HEADERS:', req.headers.authorization);
+  next();
+});
+
 module.exports = router;
