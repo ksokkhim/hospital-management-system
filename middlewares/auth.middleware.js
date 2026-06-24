@@ -19,8 +19,6 @@ const authenticate = async (req, res, next) => {
       [decoded.user_id]
     );
 
-    console.log('USER FROM DB:', rows[0]); 
-
     if (!rows.length || rows[0].status !== 'Active') {
       return res.status(401).json({ success: false, message: 'User not found or inactive' });
     }
@@ -40,9 +38,6 @@ const authenticate = async (req, res, next) => {
  */
 const authorize = (...roles) => {
   return (req, res, next) => {
-
-     console.log('USER ROLE:', req.user.role_name);  // ← add this
-    console.log('REQUIRED ROLES:', roles);           // ← add this
     if (!roles.includes(req.user.role_name)) {
       return res.status(403).json({
         success: false,
@@ -52,7 +47,5 @@ const authorize = (...roles) => {
     next();
   };
 };
-
-
 
 module.exports = { authenticate, authorize };

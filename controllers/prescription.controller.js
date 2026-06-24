@@ -1,5 +1,37 @@
 const pool = require('../config/db');
-const { sendSuccess, sendCreated, sendError } = require('../utils/response');
+const { sendSuccess, sendCreated, sendError, sendPaginated } = require('../utils/response');
+
+// GET /api/prescriptions  — FIX: was missing entirely
+const getAllPrescriptions = async (req, res, next) => {
+  try {
+    const page   = parseInt(req.query.page)  || 1;
+    const limit  = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const { patient_id, doctor_id } = req.query;
+
+    let where = 'WHERE 1=1';
+    const params = [];
+    if (patient_id) { where += ' AND pr.patient_id = ?'; params.push(patient_id); }
+    if (doctor_id)  { where += ' AND pr.doctor_id = ?';  params.push(doctor_id); }
+
+    const [rows] = await pool.query(
+      `SELECT pr.*, p.full_name AS patient_name, u.full_name AS doctor_name
+         FROM prescriptions pr
+         JOIN patients p ON pr.patient_id = p.patient_id
+         JOIN doctors d  ON pr.doctor_id  = d.doctor_id
+         JOIN users u    ON d.user_id     = u.user_id
+        ${where}
+        ORDER BY pr.prescription_date DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM prescriptions pr ${where}`, params
+    );
+    return sendPaginated(res, rows, total, page, limit);
+  } catch (err) {
+    next(err);
+  }
+};
 
 // GET /api/prescriptions/:id
 const getPrescriptionById = async (req, res, next) => {
@@ -28,7 +60,7 @@ const getPrescriptionById = async (req, res, next) => {
   }
 };
 
-// POST /api/prescriptions  — creates prescription + items in a transaction
+// POST /api/prescriptions
 const createPrescription = async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -83,4 +115,4 @@ const updatePrescription = async (req, res, next) => {
   }
 };
 
-module.exports = { getPrescriptionById, createPrescription, updatePrescription };
+module.exports = { getAllPrescriptions, getPrescriptionById, createPrescription, updatePrescription };
